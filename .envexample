@@ -1,0 +1,36 @@
+# Django
+SECRET_KEY=replace-with-your-django-secret-key
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# JWT
+ACCESS_TOKEN_LIFETIME_MINUTES=60
+REFRESH_TOKEN_LIFETIME_DAYS=1
+
+# Database
+DB_ENGINE=django.db.backends.postgresql
+DB_NAME=mobstorex
+DB_USER=postgres
+DB_PASSWORD=replace-with-db-password
+DB_HOST=localhost
+DB_PORT=5432
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=replace-with-cloudinary-cloud-name
+CLOUDINARY_API_KEY=replace-with-cloudinary-api-key
+CLOUDINARY_API_SECRET=replace-with-cloudinary-api-secret
+
+# Email
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=replace-with-email-user
+EMAIL_HOST_PASSWORD=replace-with-email-password
+DEFAULT_FROM_EMAIL=MobStoreX <mobstorex@example.com>
+
+# Auth token reset timeout (seconds)
+PASSWORD_RESET_TIMEOUT=3600
+
+# Celery
+CELERY_BROKER_URL=redis://localhost:6379/0
