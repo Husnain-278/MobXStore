@@ -84,37 +84,36 @@ class UpdateCartView(APIView):
       
       return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
    
-
-import time
-
 #Order View
 class OrderView(APIView):
-   permission_classes =[IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
-   def post(self, request):
-      serializer = OrderSerializer(data= request.data, context={'request': request})
-      if serializer.is_valid():
-         order = serializer.save()
-         user = order.user
-         send_order_confirmation_email(user.id, order.id)
-         return Response({
-            "success": True,
-            "message": "Order created successfully.",
-            "data":{
-               "order_id": order.order_id,
-               "total_price": order.total_price
-            }
-         },status=status.HTTP_201_CREATED)
-         
-      return Response({
-         "success": False,
-         "message": "Something went wrong.",
-         "errors": serializer.errors
-      }, status=status.HTTP_400_BAD_REQUEST)
-   
+    def post(self, request):
+        serializer = OrderSerializer(data=request.data, context={'request': request})
 
+        if serializer.is_valid():
+            order = serializer.save()
 
+            #  Use Celery to send email asynchronously
+            send_order_confirmation_email.delay(order.user.id, order.id)
 
+            return Response({
+                "success": True,
+                "message": "Order created successfully.",
+                "data": {
+                    "order_id": order.order_id,
+                    "total_price": order.total_price
+                }
+            }, status=status.HTTP_201_CREATED)
+
+        return Response({
+            "success": False,
+            "message": "Something went wrong.",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+        
+        
+        
 #Order History View
 class OrderHistoryView(ListAPIView):
    permission_classes = [IsAuthenticated]

@@ -2,6 +2,7 @@ from .models import Cart, Order
 from rest_framework import serializers
 from products.models import Mobile
 from django.db import transaction
+from addresses.models import Address
 
 
 #Cart Serializer
@@ -75,73 +76,105 @@ class AddToCartSerializer(serializers.Serializer):
 
 #Order Serializer
 class OrderSerializer(serializers.ModelSerializer):
+    address_id = serializers.IntegerField(write_only=True)
 
     class Meta:
         model = Order
-        fields =[
-            'product', 'order_id','quantity', 'total_price','product_name', 'product_price', 'status', 'payment_method','payment_status','created_at'
+        fields = [
+            'address_id',
+            'order_id',
+            'total_price',
+            'product_name',
+            'product_price',
+            'status',
+            'payment_method',
+            'payment_status',
+            'created_at'
         ]
-        read_only_fields=[
-            'total_price', 'product_name','product_price', 'payment_status', 'order_id', 'created_at', 'quantity', 'product'
+        read_only_fields = [
+            'total_price',
+            'product_name',
+            'product_price',
+            'payment_status',
+            'order_id',
+            'created_at'
         ]
 
+    #  VALIDATION
     def validate(self, data):
-        user  = self.context['request'].user
-        #Check cart exist
+        user = self.context['request'].user
+
+        # Cart check
         try:
-            cart  = user.cart
+            cart = user.cart
         except Cart.DoesNotExist:
             raise serializers.ValidationError('Cart is empty.')
-        
+
+        # Address check
+        address_id = data.get('address_id')
+        if not Address.objects.filter(id=address_id, user=user).exists():
+            raise serializers.ValidationError("Invalid address.")
+
+        # Stock check
         if cart.product.stock < cart.quantity:
-            raise serializers.ValidationError("Not enough stock to place order.")
-        
+            raise serializers.ValidationError("Not enough stock.")
+
+        # Payment method check
         if data.get('payment_method') not in ['cod', 'paypal']:
             raise serializers.ValidationError('Invalid payment method.')
-        
-        
+
         if data.get('payment_method') == 'paypal':
-           raise serializers.ValidationError("PayPal payment is coming soon.")
+            raise serializers.ValidationError("PayPal coming soon.")
+
         data['cart'] = cart
         return data
-    
+
+    #  CREATE ORDER
     def create(self, validated_data):
         user = self.context['request'].user
         cart = validated_data['cart']
+        address_id = validated_data.pop('address_id')
         payment_method = validated_data['payment_method']
-        
-        if payment_method == 'cod':
-            payment_status = 'pending'
-        else:
-            payment_status = 'pending'
-        #Transection Start
+
+        address = Address.objects.get(id=address_id, user=user)
+
+        payment_status = 'pending'
+
         with transaction.atomic():
-          #Lock Row
-          product = Mobile.objects.select_for_update().get(pk = cart.product.pk)
+            #  Lock product
+            product = Mobile.objects.select_for_update().get(pk=cart.product.pk)
 
-          #Recheck Stock
-          if product.stock < cart.quantity:
-            raise serializers.ValidationError("Stock changed, Try again.")
-          
-          #Update Stock
-          product.stock -= cart.quantity
-          product.save(update_fields=['stock'])
+            if product.stock < cart.quantity:
+                raise serializers.ValidationError("Stock changed, try again.")
 
-          #Create Order
-          order = Order.objects.create(
-              user = user,
-              product = product,
-              product_name = product.name,
-              product_price = product.price,
-              quantity = cart.quantity,
-              total_price = product.price * cart.quantity,
-              payment_method = payment_method, 
-              payment_status = payment_status
-          )
-          #Delete Cart
-          cart.delete()
-        return order
-        
+            # Update stock
+            product.stock -= cart.quantity
+            product.save(update_fields=['stock'])
+
+            #  CREATE ORDER WITH ADDRESS SNAPSHOT
+            order = Order.objects.create(
+                user=user,
+                product=product,
+                product_name=product.name,
+                product_price=product.price,
+                quantity=cart.quantity,
+                total_price=product.price * cart.quantity,
+                payment_method=payment_method,
+                payment_status=payment_status,
+
+                #  ADDRESS COPY 
+                full_name=address.full_name,
+                phone=address.phone,
+                address_line=address.address_line,
+                city=address.city,
+                postal_code=address.postal_code,
+                country=address.country
+            )
+
+            # Clear cart
+            cart.delete()
+
+        return order    
 
 
 

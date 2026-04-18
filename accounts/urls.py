@@ -5,5 +5,6 @@ urlpatterns = [
     path('login/', CustomLoginView.as_view()),
     path('verify-email/<uidb64>/<token>/', EmailVerifyView.as_view()),
     path('profile/', ProfileView.as_view()),
+    
 
 ]

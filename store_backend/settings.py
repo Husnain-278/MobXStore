@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'accounts',
     'cart',
     'wishlist',
+    'addresses',
     #third party apps
     'rest_framework',
     'cloudinary',

@@ -10,6 +10,7 @@ from django.core.mail import send_mail
 from .tokens import email_verification_token
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+
 # Create your views here.
 
 token_generator = PasswordResetTokenGenerator()
@@ -117,6 +118,8 @@ class ProfileView(APIView):
                 
             }
         },status.HTTP_200_OK)
+
+
 
 
 
