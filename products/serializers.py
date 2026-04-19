@@ -154,7 +154,7 @@ class AddReviewSerializer(serializers.Serializer):
 
         if not has_purchased:
             raise serializers.ValidationError(
-                "You can only review products you have purchased"
+                "You can only review item you bought."
             )
 
         return data

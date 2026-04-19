@@ -83,18 +83,32 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = [
             'address_id',
             'order_id',
+            'quantity',
             'total_price',
             'product_name',
             'product_price',
+            'full_name',
+            'phone',
+            'address_line',
+            'city',
+            'postal_code',
+            'country',
             'status',
             'payment_method',
             'payment_status',
             'created_at'
         ]
         read_only_fields = [
+            'quantity',
             'total_price',
             'product_name',
             'product_price',
+            'full_name',
+            'phone',
+            'address_line',
+            'city',
+            'postal_code',
+            'country',
             'payment_status',
             'order_id',
             'created_at'

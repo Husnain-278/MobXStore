@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'cloudinary',
     'cloudinary_storage',
     'django_filters',
+    'corsheaders',
 ]
 PASSWORD_HASHERS = [
     'accounts.hashers.FastPBK2PasswordHasher',
@@ -65,6 +66,7 @@ PASSWORD_HASHERS = [
 AUTH_USER_MODEL = 'accounts.User'
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -72,6 +74,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
 ]
 
 ROOT_URLCONF = 'store_backend.urls'
@@ -182,6 +188,7 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'MobStoreX <mobstorex@gmail.com>')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 
 
 #Token Expiry Time
@@ -193,3 +200,9 @@ PASSWORD_RESET_TIMEOUT = int(os.getenv('PASSWORD_RESET_TIMEOUT', '3600'))
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_WORKER_POOL = os.getenv('CELERY_WORKER_POOL', 'solo' if os.name == 'nt' else 'prefork')
+CELERY_WORKER_CONCURRENCY = int(
+    os.getenv('CELERY_WORKER_CONCURRENCY', '1' if os.name == 'nt' else '4')
+)
