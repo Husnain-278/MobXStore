@@ -1,7 +1,8 @@
-from django.core.mail import send_mail
-from django.conf import settings
 from celery import shared_task
 from django.contrib.auth import get_user_model
+
+from store_backend.email_service import send_email
+
 from .models import Order
 
 User = get_user_model()
@@ -25,13 +26,7 @@ Total Amount: {order.total_price}
 Thank you for shopping with us!
 """
 
-        send_mail(
-            subject,
-            message,
-            settings.EMAIL_HOST_USER,
-            [user.email],
-            fail_silently=False
-        )
+        send_email(subject, message, user.email)
 
     except Exception as e:
         raise self.retry(exc=e, countdown=5)

@@ -1,7 +1,8 @@
 from celery import shared_task
 from django.conf import settings
-from django.core.mail import send_mail
 from urllib.parse import urljoin
+
+from store_backend.email_service import send_email
 
 
 @shared_task(bind=True, max_retries=3)
@@ -13,12 +14,10 @@ def send_verification_email(self, recipient_email, uidb64, token):
             f'verify-email/{uidb64}/{token}/'
         )
 
-        send_mail(
+        send_email(
             subject='Verify your Account',
             message=f'Click the link to verify your account:\n{verification_url}',
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[recipient_email],
-            fail_silently=False,
+            recipient=recipient_email,
         )
     except Exception as exc:
         raise self.retry(exc=exc, countdown=5)
