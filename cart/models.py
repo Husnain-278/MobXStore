@@ -23,13 +23,13 @@ class Order(models.Model):
     
     STATUS_CHOICES = (
         ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('shipped', 'Shipped'),
+        ('delivered', 'Delivered'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     )
-    PAYMENT_METHOD_CHOICES = (
-    ('cod', 'Cash on Delivery'),
-    ('paypal', 'PayPal'),
-    )
+  
 
     PAYMENT_STATUS_CHOICES = (
       ('pending', 'Pending'),
@@ -46,7 +46,6 @@ class Order(models.Model):
     product_name =  models.CharField(max_length=299)
     product_price = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD_CHOICES)
     payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default='pending')
     address_line = models.TextField(null=True, blank=True)
     full_name = models.CharField(max_length=255, null=True, blank=True)

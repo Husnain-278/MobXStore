@@ -19,7 +19,7 @@ def send_order_confirmation_email(self, user_id, order_id):
         message = f"""
 Hi {user.first_name or 'Customer'},
 
-Your order #{order.id} has been placed successfully.
+Your order #{order.order_id} has been placed successfully.
 
 Total Amount: {order.total_price}
 

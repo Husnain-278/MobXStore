@@ -1,133 +1,166 @@
-# MobXStore — E-Commerce Backend
+# MobXStore — Mobile E-Commerce API
 
-A Django REST Framework backend for a mobile e-commerce store. Supports JWT auth, product browsing, cart, wishlist, addresses, and order management.
+MobXStore is a Django REST Framework backend for a mobile e-commerce store. It provides email-verified JWT accounts, a product catalogue, cart and wishlist management, saved addresses, order history, and PayPal checkout.
 
-## Tech Stack
+## Highlights
 
-- **Django 6.0.3** + **Django REST Framework**
-- **JWT Auth** (`djangorestframework-simplejwt`)
-- **PostgreSQL** (via env variables)
-- **Cloudinary** (image hosting)
-- **Celery** + **Redis** (async email tasks)
-- **Brevo (Sendinblue)** (email delivery)
+- Email verification and JWT bearer authentication
+- Mobile catalogue with brands, categories, specifications, images, reviews, filtering, and pagination
+- Single-product cart with stock-aware quantity updates
+- Wishlist and saved-address management
+- PayPal order creation and capture in USD
+- Atomic paid-order creation: address snapshot, payment record, inventory reduction, cart clearing, and asynchronous confirmation email
+- Duplicate PayPal captures return the original payment data instead of creating another order
 
----
+## Tech stack
 
-## API Endpoints
+- Python 3.12, Django 6, and Django REST Framework
+- PostgreSQL
+- `uv` for dependency management
+- Simple JWT for authentication
+- PayPal Server SDK
+- Celery and Redis for background emails
+- Brevo for email delivery
+- Cloudinary for product images
 
-### Accounts — `api/accounts/`
+## Quick start
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/accounts/register/` | Public | Create account. Sends verification email. Body: `{ "email", "password" }` |
-| POST | `/api/accounts/login/` | Public | Login. Returns JWT tokens. Body: `{ "email", "password" }` |
-| GET | `/api/accounts/verify-email/<uidb64>/<token>/` | Public | Verify email address via link |
-| GET | `/api/accounts/profile/` | JWT | Get authenticated user's profile |
+1. Create the local environment file and supply its values:
 
-### Products — `api/products/`
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/products/brands/` | Public | List all brands (paginated) |
-| GET | `/api/products/categories/` | Public | List all categories (paginated) |
-| GET | `/api/products/mobiles/` | Public | List mobiles with filtering & pagination |
-| GET | `/api/products/mobiles/<slug>/` | Public | Get mobile detail (specs, images, reviews, avg rating) |
-| POST | `/api/products/add-review/` | JWT | Add review (must have purchased). Body: `{ "product_id", "rating", "comment?" }` |
-
-**Filters for `GET /api/products/mobiles/`:**
-
-| Param | Description |
-|-------|-------------|
-| `brand` | Filter by brand slug |
-| `category` | Filter by category slug |
-| `min_price` / `max_price` | Price range |
-| `search` | Search mobile name |
-| `ordering` | Sort by `price` (prefix with `-` for descending) |
-
-### Cart — `api/cart/`
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/cart/` | JWT | Get current cart |
-| POST | `/api/cart/add-to-cart/` | JWT | Add product to cart. Body: `{ "product_id", "quantity?" }` |
-| PATCH | `/api/cart/update/` | JWT | Increase/decrease quantity. Body: `{ "action": "increase" | "decrease" }` |
-| DELETE | `/api/cart/remove/` | JWT | Clear entire cart |
-| POST | `/api/cart/order/` | JWT | Place order from cart. Body: `{ "payment_method", "address_id" }` |
-| GET | `/api/cart/orders/` | JWT | List order history (paginated, newest first) |
-
-### Wishlist — `api/wishlist/`
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/wishlist/` | JWT | List wishlist items |
-| POST | `/api/wishlist/add/` | JWT | Add product. Body: `{ "product": <id> }` |
-| DELETE | `/api/wishlist/remove/<wishlist_id>/` | JWT | Remove item by wishlist ID |
-
-### Addresses — `api/addresses/`
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/addresses/` | JWT | List saved addresses |
-| POST | `/api/addresses/` | JWT | Create address |
-| DELETE | `/api/addresses/delete/<pk>/` | JWT | Delete address |
-| POST | `/api/addresses/set-default/<pk>/` | JWT | Set address as default |
-
----
-
-## Auth Flow
-
-1. **Register** at `/api/accounts/register/` → account created with `is_active=False`
-2. Click verification link from email → `/api/accounts/verify-email/<uidb64>/<token>/`
-3. **Login** at `/api/accounts/login/` → receive `access` and `refresh` JWT tokens
-4. Include `Authorization: Bearer <access_token>` header in all authenticated requests
-
----
-
-## Models Overview
-
-| Model | Key Fields |
-|-------|------------|
-| `User` | `email` (unique, login field), `password`, `is_active` (default False) |
-| `Brand` | `name`, `slug`, `logo` (Cloudinary) |
-| `Category` | `name`, `slug` |
-| `Mobile` | `name`, `brand`, `category`, `price`, `stock`, `description`, `primary_image` |
-| `Specification` | `name` |
-| `MobileSpecification` | `mobile`, `specification`, `value` |
-| `MobileImage` | `mobile`, `image` (Cloudinary), `is_primary` |
-| `Review` | `user`, `product`, `rating` (1-5), `comment` |
-| `Cart` | `user` (OneToOne), `product`, `quantity` |
-| `Order` | `user`, `product`, `order_id`, `quantity`, `total_price`, `status`, `payment_method`, `payment_status`, address snapshot fields |
-| `Address` | `user`, `full_name`, `phone`, `address_line`, `city`, `postal_code`, `country`, `is_default` |
-| `Wishlist` | `user`, `product` |
-
----
-
-## Setup
-
-1. **Clone and create virtual environment**
    ```bash
-   python -m venv venv
-   source venv/bin/activate
+   cp .env.example .env
    ```
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
+   Configure PostgreSQL, Cloudinary, Brevo, Redis, and PayPal. For local payment testing, use PayPal sandbox credentials:
+
+   ```env
+   PAYPAL_MODE=sandbox
+   PAYPAL_CLIENT_ID=your-sandbox-client-id
+   PAYPAL_CLIENT_SECRET=your-sandbox-client-secret
+   PAYPAL_RETURN_URL=http://localhost:5173/payment/success
+   PAYPAL_CANCEL_URL=http://localhost:5173/payment/cancel
    ```
 
-3. **Set environment variables** (database URL, Cloudinary creds, Brevo API key, Redis URL)
+2. Install dependencies and apply migrations:
 
-4. **Run migrations**
    ```bash
-   python manage.py migrate
+   uv sync
+   uv run python manage.py migrate
    ```
 
-5. **Start development server**
+3. Start the API server:
+
    ```bash
-   python manage.py runserver
+   uv run python manage.py runserver
    ```
 
-6. **Start Celery worker** (for async emails)
+4. Start Redis and a Celery worker to deliver verification and order-confirmation emails:
+
    ```bash
-   celery -A store_backend worker -l info
+   redis-server
+   uv run celery -A store_backend worker -l info
    ```
+
+Optional: seed the catalogue with fake data and images from `assets/`:
+
+```bash
+uv run python manage.py generate_fake_products --count 12 --category-count 6
+```
+
+## Authentication
+
+1. `POST /api/accounts/register/` to create an inactive account and send a verification email.
+2. Open `GET /api/accounts/verify-email/<uidb64>/<token>/` from that email.
+3. `POST /api/accounts/login/` to receive `access` and `refresh` tokens.
+4. Send authenticated requests with `Authorization: Bearer <access_token>`.
+
+## API endpoints
+
+All endpoints return the project response envelope, using `success`, `message`, `data`, and/or `errors` as applicable.
+
+### Accounts — `/api/accounts/`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `register/` | Public | Register with `email` and `password`; sends verification email. |
+| POST | `login/` | Public | Sign in with `email` and `password`; returns JWT tokens. |
+| GET | `verify-email/<uidb64>/<token>/` | Public | Activate a verified email address. |
+| GET | `profile/` | JWT | Retrieve the authenticated user profile. |
+
+### Products — `/api/products/`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `brands/` | Public | List brands (paginated). |
+| GET | `categories/` | Public | List categories (paginated). |
+| GET | `mobiles/` | Public | List mobiles with filtering and pagination. |
+| GET | `mobiles/<slug>/` | Public | Get a mobile, its specifications, images, reviews, and average rating. |
+| POST | `add-review/` | JWT | Add a review for a purchased product. Body: `product_id`, `rating`, optional `comment`. |
+
+`mobiles/` supports `brand`, `category`, `min_price`, `max_price`, `search`, and `ordering` (for example, `-price`).
+
+### Cart and orders — `/api/cart/`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `` | JWT | Retrieve the current cart. |
+| POST | `add-to-cart/` | JWT | Add a product. Body: `product_id`, optional `quantity`. |
+| PATCH | `update/` | JWT | Adjust quantity. Body: `action` set to `increase` or `decrease`. |
+| DELETE | `remove/` | JWT | Clear the current cart. |
+| GET | `orders/` | JWT | List the authenticated user's order history, newest first. |
+
+`POST /api/cart/order/` remains available for the legacy direct-order flow. New checkouts should use the PayPal endpoints below.
+
+### Wishlist — `/api/wishlist/`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `` | JWT | List wishlist items. |
+| POST | `add/` | JWT | Add a product. Body: `{ "product": <id> }`. |
+| DELETE | `remove/<wishlist_id>/` | JWT | Remove a wishlist item. |
+
+### Addresses — `/api/addresses/`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `` | JWT | List saved addresses. |
+| POST | `` | JWT | Create an address. |
+| DELETE | `delete/<pk>/` | JWT | Delete an address. |
+| POST | `set-default/<pk>/` | JWT | Make an address the default. |
+
+### Payments (PayPal) — `/api/payments/`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `create-order/` | JWT | Create a PayPal order from the current cart. Body: `{ "address_id": 1 }`. |
+| POST | `capture-order/` | JWT | Capture an approved PayPal order. Body: `{ "paypal_order_id": "…", "address_id": 1 }`. |
+
+## PayPal checkout flow
+
+1. Add a product to the cart and create a saved address.
+2. Call `POST /api/payments/create-order/` with that address ID. The response includes `paypal_order_id`, `approval_url`, `amount`, and `currency`.
+3. Redirect the customer to `approval_url` to approve the payment in PayPal.
+4. Call `POST /api/payments/capture-order/` with the PayPal order ID and address ID.
+
+On a successful capture, the API verifies the completed PayPal amount against the cart total, creates an `Order` and one-to-one `Payment` record, marks the order as `processing` and paid, reduces stock, clears the cart, and queues an order-confirmation email. A repeated capture request for the same PayPal order returns its existing result.
+
+## Models
+
+| Model | Purpose |
+|---|---|
+| `User` | Email-based account; inactive until email verification. |
+| `Brand`, `Category`, `Mobile` | Catalogue structure and mobile inventory. |
+| `Specification`, `MobileSpecification`, `MobileImage` | Product attributes and Cloudinary-hosted images. |
+| `Review` | One review per user and product. |
+| `Cart` | One cart entry per user, containing one product and quantity. |
+| `Address` | User-owned delivery addresses, including a default address. |
+| `Order` | Purchased product details, price and address snapshots, fulfilment and payment status. |
+| `Payment` | One-to-one PayPal transaction details for an order. |
+| `Wishlist` | User-saved products. |
+
+## Development notes
+
+- API pagination defaults to 10 results per page, with a maximum of 100.
+- CORS permits the configured Vite development origins; adjust `CORS_ALLOWED_ORIGINS` for deployment.
+- Create an admin account with `uv run python manage.py createsuperuser`; payment records are available in Django admin.
+- Keep `.env` out of version control and use production PayPal credentials only with `PAYPAL_MODE=production`.

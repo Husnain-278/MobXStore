@@ -18,9 +18,8 @@ class OrderAdmin(admin.ModelAdmin):
 		"quantity",
 		"total_price",
 		"status",
-		"payment_method",
 		"payment_status",
 		"created_at",
 	)
 	search_fields = ("order_id", "user__email", "product_name")
-	list_filter = ("status", "payment_method", "payment_status", "created_at")
+	list_filter = ("status", "payment_status", "created_at")

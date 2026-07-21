@@ -74,7 +74,7 @@ class AddToCartSerializer(serializers.Serializer):
 
 
 
-#Order Serializer
+#Order Serializer (Deprecated - Use PayPal flow instead)
 class OrderSerializer(serializers.ModelSerializer):
     address_id = serializers.IntegerField(write_only=True)
 
@@ -94,7 +94,6 @@ class OrderSerializer(serializers.ModelSerializer):
             'postal_code',
             'country',
             'status',
-            'payment_method',
             'payment_status',
             'created_at'
         ]
@@ -109,6 +108,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'city',
             'postal_code',
             'country',
+            'status',
             'payment_status',
             'order_id',
             'created_at'
@@ -133,13 +133,6 @@ class OrderSerializer(serializers.ModelSerializer):
         if cart.product.stock < cart.quantity:
             raise serializers.ValidationError("Not enough stock.")
 
-        # Payment method check
-        if data.get('payment_method') not in ['cod', 'paypal']:
-            raise serializers.ValidationError('Invalid payment method.')
-
-        if data.get('payment_method') == 'paypal':
-            raise serializers.ValidationError("PayPal coming soon.")
-
         data['cart'] = cart
         return data
 
@@ -148,7 +141,6 @@ class OrderSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         cart = validated_data['cart']
         address_id = validated_data.pop('address_id')
-        payment_method = validated_data['payment_method']
 
         address = Address.objects.get(id=address_id, user=user)
 
@@ -173,7 +165,6 @@ class OrderSerializer(serializers.ModelSerializer):
                 product_price=product.price,
                 quantity=cart.quantity,
                 total_price=product.price * cart.quantity,
-                payment_method=payment_method,
                 payment_status=payment_status,
 
                 #  ADDRESS COPY 

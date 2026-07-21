@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'cart',
     'wishlist',
     'addresses',
+    'payments',
     #third party apps
     'rest_framework',
     'cloudinary',
@@ -78,6 +79,7 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "http://192.168.100.21:5173",
 ]
 
 ROOT_URLCONF = 'store_backend.urls'
@@ -199,3 +201,15 @@ CELERY_WORKER_POOL = os.getenv('CELERY_WORKER_POOL', 'solo' if os.name == 'nt' e
 CELERY_WORKER_CONCURRENCY = int(
     os.getenv('CELERY_WORKER_CONCURRENCY', '1' if os.name == 'nt' else '4')
 )
+
+
+#Paypal Configurations
+PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")
+
+PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
+
+PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET")
+
+PAYPAL_RETURN_URL = os.getenv("PAYPAL_RETURN_URL", "http://localhost:5173/payment/success")
+
+PAYPAL_CANCEL_URL = os.getenv("PAYPAL_CANCEL_URL", "http://localhost:5173/payment/cancel")
