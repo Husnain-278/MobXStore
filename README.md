@@ -10,6 +10,7 @@ MobXStore is a Django REST Framework backend for a mobile e-commerce store. It p
 - Wishlist and saved-address management
 - PayPal order creation and capture in USD
 - Atomic paid-order creation: address snapshot, payment record, inventory reduction, cart clearing, and asynchronous confirmation email
+- Status-specific admin emails for pending, processing, shipped, delivered, completed, and cancelled orders
 - Duplicate PayPal captures return the original payment data instead of creating another order
 
 ## Tech stack
@@ -163,4 +164,5 @@ On a successful capture, the API verifies the completed PayPal amount against th
 - API pagination defaults to 10 results per page, with a maximum of 100.
 - CORS permits the configured Vite development origins; adjust `CORS_ALLOWED_ORIGINS` for deployment.
 - Create an admin account with `uv run python manage.py createsuperuser`; payment records are available in Django admin.
+- Changing an existing order's status in Django admin queues a customer notification through Celery after the database transaction succeeds.
 - Keep `.env` out of version control and use production PayPal credentials only with `PAYPAL_MODE=production`.
