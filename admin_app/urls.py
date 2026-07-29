@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     AdminLoginAPIView,
     AdminLogoutAPIView,
+    AdminMeAPIView,
     AdminRefreshTokenAPIView,
     DashboardAPIView,
 )
@@ -10,6 +11,7 @@ from .views import (
 urlpatterns = [
     path("login/", AdminLoginAPIView.as_view(), name="admin-login"),
     path("logout/", AdminLogoutAPIView.as_view(), name="admin-logout"),
+    path("me/", AdminMeAPIView.as_view(), name="admin-me"),
     path("token/refresh/", AdminRefreshTokenAPIView.as_view(), name="admin-token-refresh"),
     path("dashboard/", DashboardAPIView.as_view(), name="dashboard"),
 ]

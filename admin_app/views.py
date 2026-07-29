@@ -74,6 +74,26 @@ class AdminLogoutAPIView(APIView):
         
         clear_auth_cookies(response)
         return response
+
+
+class AdminMeAPIView(APIView):
+    """Return the authenticated administrator's safe display information."""
+
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes = [IsSuperUser]
+
+    def get(self, request):
+        return Response(
+            {
+                "user": {
+                    "id": request.user.id,
+                    "email": request.user.email,
+                    "first_name": request.user.first_name,
+                    "last_name": request.user.last_name,
+                }
+            },
+            status=status.HTTP_200_OK,
+        )
     
     
 class AdminRefreshTokenAPIView(APIView):
