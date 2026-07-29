@@ -4,7 +4,7 @@ MobXStore is a Django REST Framework backend for a mobile e-commerce store. It p
 
 ## Tech stack
 
-- Python 3.12, Django 6, Django REST Framework 3.17+
+- Python 3.12, Django 6, Django REST Framework 3.17+``
 - PostgreSQL
 - `uv` for dependency management
 - `djangorestframework-simplejwt` — JWT Bearer auth

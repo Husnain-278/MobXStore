@@ -53,8 +53,10 @@ INSTALLED_APPS = [
     'wishlist',
     'addresses',
     'payments',
+    'admin_app',
     #third party apps
     'rest_framework',
+    "rest_framework_simplejwt.token_blacklist",
     'cloudinary',
     'cloudinary_storage',
     'django_filters',
@@ -81,7 +83,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://192.168.100.21:5173",
 ]
-
+CORS_ALLOW_CREDENTIALS = True
 ROOT_URLCONF = 'store_backend.urls'
 
 TEMPLATES = [
@@ -118,11 +120,39 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv('ACCESS_TOKEN_LIFETIME_MINUTES', '60'))),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv('REFRESH_TOKEN_LIFETIME_DAYS', '1'))),
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=int(os.getenv("ACCESS_TOKEN_LIFETIME_MINUTES", "60"))
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=int(os.getenv("REFRESH_TOKEN_LIFETIME_DAYS", "1"))
+    ),
+
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+
+    "UPDATE_LAST_LOGIN": True,
+
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
+
+# Admin JWT Cookie Settings
+
+JWT_ACCESS_COOKIE = "admin_access_token"
+JWT_REFRESH_COOKIE = "admin_refresh_token"
+
+JWT_COOKIE_HTTP_ONLY = True
+JWT_COOKIE_SECURE = not DEBUG
+JWT_COOKIE_SAMESITE = "Lax"
+
+JWT_ACCESS_COOKIE_PATH = "/api/admin/"
+JWT_REFRESH_COOKIE_PATH = "/api/admin/"
+
+JWT_ACCESS_COOKIE_MAX_AGE = 15 * 60
+JWT_REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60
 
 
 # Database
