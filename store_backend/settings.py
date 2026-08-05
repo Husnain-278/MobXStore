@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'wishlist',
     'addresses',
     'payments',
+    'admin_app',
     #third party apps
     'rest_framework',
     "rest_framework_simplejwt.token_blacklist",
