@@ -1,14 +1,16 @@
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from admin_app.authentication import AdminJWTAuthentication
 from admin_app.serializers.conversation import ConversationSerializer
 from admin_app.services.conversation_service import ConversationService
+from admin_app.utils import IsSuperUser
 
 
 class ConversationListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [AdminJWTAuthentication]
+    permission_classes = [IsSuperUser]
 
     def get(self, request):
         conversations = ConversationService.list(request.user)
@@ -22,7 +24,8 @@ class ConversationListAPIView(APIView):
 
 
 class ConversationDeleteAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [AdminJWTAuthentication]
+    permission_classes = [IsSuperUser]
 
     def delete(self, request, conversation_id):
         conversation = ConversationService.get(

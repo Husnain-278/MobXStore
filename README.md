@@ -1,10 +1,19 @@
 # MobXStore — Mobile E-Commerce API
 
-MobXStore is a Django REST Framework backend for a mobile e-commerce store. It provides email-verified JWT accounts, a product catalogue with filtering/pagination, cart and wishlist management, saved addresses, order history, and PayPal checkout.
+## Overview
+
+- **Mobile e-commerce backend** built with Django 6 + Django REST Framework, PostgreSQL, and `uv`.
+- **Email-verified JWT accounts** — users register, verify their email, then log in to receive access/refresh tokens.
+- **Product catalogue** with brands, categories, specifications, image galleries, reviews, filtering, search, ordering, and pagination.
+- **Shopping features** — cart, wishlist, saved addresses, and order history with status/payment tracking.
+- **PayPal checkout** (sandbox/production) — order creation, approval URL, capture, and idempotent payment handling.
+- **Async email delivery** via Celery + Redis and Brevo/Sendinblue.
+- **Cloudinary-hosted product images** — no local media storage.
+- **Superuser admin API** (`/api/admin/`) — cookie-based JWT auth, dashboard analytics, and an AI chat agent (Mistral) with tool support.
 
 ## Tech stack
 
-- Python 3.12, Django 6, Django REST Framework 3.17+``
+- Python 3.12, Django 6, Django REST Framework 3.17+
 - PostgreSQL
 - `uv` for dependency management
 - `djangorestframework-simplejwt` — JWT Bearer auth
@@ -14,6 +23,7 @@ MobXStore is a Django REST Framework backend for a mobile e-commerce store. It p
 - PayPal Server SDK — order creation & capture (USD)
 - `django-filter` — product filtering
 - `django-cors-headers` — CORS for Vite dev server
+- LangChain + Mistral AI — admin chat agent (`admin_app`)
 
 ## Setup guide
 
@@ -25,6 +35,7 @@ MobXStore is a Django REST Framework backend for a mobile e-commerce store. It p
 - Cloudinary account (for product images)
 - Brevo / Sendinblue API key (for emails)
 - PayPal Developer account (sandbox credentials for local testing)
+- Mistral API key (for the admin AI chat agent)
 
 ### 1. Clone and enter the project
 
@@ -106,6 +117,14 @@ Edit `.env` with your values. Every variable is documented below:
 | `PAYPAL_RETURN_URL` | Redirect after PayPal approval | `http://localhost:5173/payment/success` |
 | `PAYPAL_CANCEL_URL` | Redirect if user cancels | `http://localhost:5173/payment/cancel` |
 
+#### Admin AI chat (Mistral)
+
+| Variable | Description | Default |
+|---|---|---|
+| `MISTRAL_API_KEY` | Mistral API key (used by the admin chat agent) | — |
+| `MISTRAL_MODEL` | Mistral model name | `mistral-small-2506` |
+| `MISTRAL_TEMPERATURE` | Sampling temperature | `0.3` |
+
 ### 3. Install dependencies
 
 ```bash
@@ -147,11 +166,17 @@ This uploads images from `assets/` to Cloudinary.
 uv run python manage.py createsuperuser
 ```
 
-Orders and payments are visible in Django admin at `/admin/`.
+Orders and payments are visible in Django admin at `/admin/`. A superuser is also required to access the admin API (`/api/admin/`) documented in [Part 2](#part-2--admin-app-apiadmin).
+
+---
+
+# Part 1 — Customer API (`/api/`)
+
+The customer-facing API covers accounts, products, cart, wishlist, addresses, and payments.
 
 ## Authentication flow
 
-All authenticated endpoints require `Authorization: Bearer <access_token>`.
+All authenticated customer endpoints require `Authorization: Bearer <access_token>`.
 
 1. **Register** — `POST /api/accounts/register/` creates an inactive account and sends a verification email.
 2. **Verify email** — Open the link from the email: `GET /api/accounts/verify-email/<uidb64>/<token>/`.
@@ -1020,7 +1045,7 @@ Capture an approved PayPal order. On success, creates an `Order` and `Payment` r
 
 ---
 
-## Models
+### Models
 
 | Model | Purpose |
 |---|---|
@@ -1034,7 +1059,7 @@ Capture an approved PayPal order. On success, creates an `Order` and `Payment` r
 | `Payment` | `OneToOneField` to `Order` — PayPal transaction details. |
 | `Wishlist` | User-saved products. |
 
-## PayPal checkout flow
+### PayPal checkout flow
 
 1. Add a product to the cart and create a saved address.
 2. Call `POST /api/payments/create-order/` with the address ID. Redirect the customer to `approval_url`.
@@ -1050,7 +1075,7 @@ On successful capture, the API:
 - Queues an async confirmation email via Celery
 - A repeated capture for the same PayPal order returns the existing result (idempotent)
 
-## Development notes
+### Development notes
 
 - `is_active=False` on user creation — email verification required before login.
 - Password hasher: `accounts.hashers.FastPBK2PasswordHasher` (100k PBKDF2 iterations).
@@ -1059,3 +1084,89 @@ On successful capture, the API:
 - `TIME_ZONE = 'Asia/Karachi'`.
 - Changing an order's status in Django admin queues a customer notification email via Celery (after transaction commit).
 - Keep `.env` out of version control. Use PayPal sandbox credentials for local testing; switch `PAYPAL_MODE=production` only for deployment.
+
+---
+
+# Part 2 — Admin App (`/api/admin/`)
+
+The admin app is a superuser-only API for store management. It provides JWT auth via HttpOnly cookies, dashboard analytics, and an AI-powered chat agent.
+
+## Authentication
+
+Unlike the customer API, the admin API does **not** use the `Authorization: Bearer` header. Tokens are stored in signed, HttpOnly cookies:
+
+| Cookie | Purpose | Lifetime |
+|---|---|---|
+| `admin_access_token` | Access token | 15 minutes |
+| `admin_refresh_token` | Refresh token | 7 days |
+
+- Both cookies are `HttpOnly`, `Secure`, `SameSite=None`, and path-scoped to `/api/admin/`.
+- Only `auth/login/` and `auth/refresh/` are public. All other endpoints require superuser privileges (`IsSuperUser`).
+- **Logout** blacklists the refresh token and clears both cookies.
+
+## Endpoints
+
+### Auth
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/admin/auth/login/` | Public | Login with `{email, password}`. Superuser only. Sets auth cookies. |
+| `POST` | `/api/admin/auth/logout/` | Superuser | Blacklists the refresh token and clears auth cookies. |
+| `POST` | `/api/admin/auth/refresh/` | Public | Rotates access + refresh cookies from the refresh cookie. |
+| `GET` | `/api/admin/auth/me/` | Superuser | Returns `{email, first_name, last_name}` of the current admin. |
+
+### Dashboard
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/admin/dashboard/summary/?days=<N>` | Superuser | Store analytics summary. `days` is clamped to 1–90 (default 15). |
+
+Returns `summary` (`total_orders`, `orders_by_status`, `total_revenue`, `new_users`) and a `daily` breakdown for each day in the range.
+
+### Chat (AI agent)
+
+The chat agent (LangChain + Mistral) answers store questions and can invoke tools.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/admin/chat/` | Superuser | Non-streaming reply. Body: `{message, conversation?}`. Returns `{conversation, message}`. |
+| `POST` | `/api/admin/chat/stream/` | Superuser | Streaming reply over Server-Sent Events (SSE), `text/event-stream`. |
+
+**Chat request body:**
+
+| Field | Type | Description |
+|---|---|---|
+| `message` | string | User input (max 5000 chars, non-empty). |
+| `conversation` | int | Optional existing conversation ID; omitted for a new chat. |
+
+**SSE events** (each event carries a JSON payload):
+
+| Event | Payload |
+|---|---|
+| `message.started` | `{conversation}` |
+| `content.delta` | `{delta}` — streamed text tokens |
+| `tool.call` | `{id, name, input}` — tool invocation started |
+| `tool.result` | `{id, name, output}` — tool invocation result |
+| `message.completed` | `{conversation, message}` — final persisted reply |
+| `error` | `{code, message}` |
+
+### Conversations
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/admin/conversations/` | Superuser | List the admin's conversations (newest first). |
+| `DELETE` | `/api/admin/conversations/<id>/` | Superuser | Delete a conversation (`204 No Content`). |
+| `GET` | `/api/admin/conversations/<id>/messages/` | Superuser | List messages of a conversation in chronological order. |
+
+Each conversation has `{id, title, created_at, updated_at}`; each message has `{id, role, content, created_at}` where `role` is `user` or `assistant`.
+
+## Admin chat model
+
+| Model | Purpose |
+|---|---|
+| `Conversation` | A chat thread owned by a superuser; auto-titled from the first user message. |
+| `Message` | A single `user` or `assistant` message within a conversation. |
+
+## Mistral configuration
+
+The chat agent requires a Mistral API key (see setup guide). It reads `MISTRAL_API_KEY`, `MISTRAL_MODEL`, and `MISTRAL_TEMPERATURE` from the environment.

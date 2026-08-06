@@ -1,6 +1,11 @@
 from django.urls import path
 
 from admin_app.views import (
+    AdminLoginView,
+    AdminLogoutView,
+    AdminRefreshView,
+    AdminMeView,
+    AdminDashboardView,
     ChatAPIView,
     ChatStreamAPIView,
     ConversationDeleteAPIView,
@@ -11,6 +16,31 @@ from admin_app.views import (
 app_name = "admin_app"
 
 urlpatterns = [
+    path(
+        "auth/login/",
+        AdminLoginView.as_view(),
+        name="admin-login",
+    ),
+    path(
+        "auth/logout/",
+        AdminLogoutView.as_view(),
+        name="admin-logout",
+    ),
+    path(
+        "auth/refresh/",
+        AdminRefreshView.as_view(),
+        name="admin-refresh",
+    ),
+    path(
+        "auth/me/",
+        AdminMeView.as_view(),
+        name="admin-me",
+    ),
+    path(
+        "dashboard/summary/",
+        AdminDashboardView.as_view(),
+        name="admin-dashboard-summary",
+    ),
     path(
         "chat/",
         ChatAPIView.as_view(),

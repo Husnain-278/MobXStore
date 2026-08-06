@@ -3,21 +3,23 @@ import logging
 
 from django.http import StreamingHttpResponse
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from admin_app.agent.ai_service import AIService
+from admin_app.authentication import AdminJWTAuthentication
 from admin_app.renderers import ServerSentEventRenderer
 from admin_app.serializers.chat import ChatSerializer
 from admin_app.services.conversation_service import ConversationService
+from admin_app.utils import IsSuperUser
 
 
 logger = logging.getLogger(__name__)
 
 
 class ChatAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [AdminJWTAuthentication]
+    permission_classes = [IsSuperUser]
 
     def post(self, request):
         serializer = ChatSerializer(data=request.data)
@@ -47,7 +49,8 @@ class ChatAPIView(APIView):
 class ChatStreamAPIView(APIView):
     """Stream chat replies as Server-Sent Events (SSE)."""
 
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [AdminJWTAuthentication]
+    permission_classes = [IsSuperUser]
     renderer_classes = [ServerSentEventRenderer]
 
     def post(self, request):
