@@ -80,6 +80,42 @@ class AIService:
             )
 
         return response.ai_message
-    
+
+    def stream_reply(self, conversation, user_input):
+        """Persist a streamed reply and expose its agent events.
+
+        A database transaction must not be held open while the client is
+        receiving tokens, so persistence is performed at the natural start and
+        end of the stream instead.
+        """
+        MessageService.create_user_message(
+            conversation=conversation,
+            content=user_input,
+        )
+
+        messages = MessageService.get_recent(conversation)
+
+        for event in self.agent.stream(messages):
+            if event["type"] != "response.completed":
+                yield event
+                continue
+
+            ai_message = event["ai_message"]
+            MessageService.create_assistant_message(
+                conversation=conversation,
+                content=ai_message.content,
+            )
+
+            if not conversation.title:
+                ConversationService.update_title(
+                    conversation,
+                    self._generate_title(conversation),
+                )
+
+            yield {
+                "type": "message.completed",
+                "conversation": conversation.id,
+                "message": ai_message.content,
+            }
     
     

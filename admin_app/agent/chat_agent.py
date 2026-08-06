@@ -39,3 +39,73 @@ class ChatAgent:
         raise RuntimeError(
             f"Maximum tool iterations ({self.MAX_TOOL_ITERATIONS}) exceeded."
         )
+
+    def stream(self, messages):
+        """Stream an agent response, including any intermediate tool calls.
+
+        The yielded dictionaries are deliberately transport-agnostic.  The view
+        turns them into Server-Sent Events, which keeps the agent usable from
+        non-HTTP callers as well.
+        """
+        history = MemoryBuilder.build(messages)
+
+        for _ in range(self.MAX_TOOL_ITERATIONS):
+            response = None
+
+            for chunk in llm_with_tools.stream(history):
+                response = chunk if response is None else response + chunk
+
+                # Tool-call chunks do not contain user-visible text.  Only
+                # forward actual text deltas to the client.
+                if chunk.content:
+                    yield {
+                        "type": "content.delta",
+                        "delta": self._content_as_text(chunk.content),
+                    }
+
+            if response is None:
+                raise RuntimeError("The LLM returned an empty stream.")
+
+            if not response.tool_calls:
+                yield {
+                    "type": "response.completed",
+                    "ai_message": response,
+                }
+                return
+
+            history.append(response)
+
+            for tool_call in response.tool_calls:
+                yield {
+                    "type": "tool.call",
+                    "id": tool_call["id"],
+                    "name": tool_call["name"],
+                    "input": tool_call["args"],
+                }
+
+                tool_message = ToolExecutor.execute_call(tool_call)
+                yield {
+                    "type": "tool.result",
+                    "id": tool_call["id"],
+                    "name": tool_call["name"],
+                    "output": tool_message.content,
+                }
+                history.append(tool_message)
+
+        raise RuntimeError(
+            f"Maximum tool iterations ({self.MAX_TOOL_ITERATIONS}) exceeded."
+        )
+
+    @staticmethod
+    def _content_as_text(content):
+        """Normalise LangChain's string or structured content blocks."""
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, list):
+            return "".join(
+                block.get("text", "") if isinstance(block, dict) else str(block)
+                for block in content
+            )
+
+        return str(content)

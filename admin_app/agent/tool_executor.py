@@ -10,20 +10,19 @@ class ToolExecutor:
 
     @staticmethod
     def execute(ai_message):
-        tool_messages = []
+        return [
+            ToolExecutor.execute_call(tool_call)
+            for tool_call in ai_message.tool_calls
+        ]
 
-        for tool_call in ai_message.tool_calls:
+    @staticmethod
+    def execute_call(tool_call):
+        """Execute one call so streaming can report its lifecycle in order."""
+        tool = TOOL_MAP[tool_call["name"]]
+        result = tool.invoke(tool_call["args"])
 
-            tool = TOOL_MAP[tool_call["name"]]
-
-            result = tool.invoke(tool_call["args"])
-
-            tool_messages.append(
-                ToolMessage(
-                    content=str(result),
-                    tool_call_id=tool_call["id"],
-                    name=tool_call["name"],
-                )
-            )
-
-        return tool_messages
+        return ToolMessage(
+            content=str(result),
+            tool_call_id=tool_call["id"],
+            name=tool_call["name"],
+        )

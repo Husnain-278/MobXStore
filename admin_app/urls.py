@@ -2,6 +2,7 @@ from django.urls import path
 
 from admin_app.views import (
     ChatAPIView,
+    ChatStreamAPIView,
     ConversationDeleteAPIView,
     ConversationListAPIView,
     MessageListAPIView,
@@ -14,6 +15,11 @@ urlpatterns = [
         "chat/",
         ChatAPIView.as_view(),
         name="chat",
+    ),
+    path(
+        "chat/stream/",
+        ChatStreamAPIView.as_view(),
+        name="chat-stream",
     ),
     path(
         "conversations/",
