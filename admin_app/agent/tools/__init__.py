@@ -1,9 +1,9 @@
 from .greeting import greeting
-from .streaming_test import streaming_test
+from .product_stock import out_of_stock_products
 
 TOOLS = [
     greeting,
-    streaming_test,
+    out_of_stock_products,
 ]
 
 TOOL_MAP = {
