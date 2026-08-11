@@ -1,5 +1,6 @@
 from celery import shared_task
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 from store_backend.email_service import send_email
 
@@ -52,6 +53,25 @@ ORDER_STATUS_EMAILS = {
         ),
     },
 }
+
+
+def notify_order_status_change(order, previous_status):
+    """Queue a customer email when an order's status changes.
+
+    Shared by the Django admin and the chat agent so every status change
+    (from either surface) notifies the customer exactly once.
+    """
+    if previous_status == order.status:
+        return False
+
+    transaction.on_commit(
+        lambda: send_order_status_update_email.delay(
+            order.user_id,
+            order.pk,
+            previous_status,
+        )
+    )
+    return True
 
 
 @shared_task(bind=True, max_retries=3)
